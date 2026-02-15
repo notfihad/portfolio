@@ -14,20 +14,43 @@
 'use strict';
 
 /* ============================================================
-   1. DARK MODE
+   1. DARK MODE WITH SMOOTH TRANSITION
    ============================================================ */
 (function initTheme() {
   const html   = document.documentElement;
   const toggle = document.getElementById('themeToggle');
+  const overlay = document.getElementById('themeTransitionOverlay');
 
   const saved      = localStorage.getItem('nif-theme');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   html.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
 
   toggle.addEventListener('click', () => {
-    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    html.setAttribute('data-theme', next);
-    localStorage.setItem('nif-theme', next);
+    const currentTheme = html.getAttribute('data-theme');
+    const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    // Show overlay with smooth dimming/brightening
+    overlay.classList.add('active');
+    
+    // Change background color based on direction
+    if (nextTheme === 'dark') {
+      // Light to dark: fade to dark overlay
+      overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    } else {
+      // Dark to light: fade to light overlay
+      overlay.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+    }
+    
+    // Apply theme change after 100ms (gives smooth fade start)
+    setTimeout(() => {
+      html.setAttribute('data-theme', nextTheme);
+      localStorage.setItem('nif-theme', nextTheme);
+      
+      // Fade out the overlay after another 400ms
+      setTimeout(() => {
+        overlay.classList.remove('active');
+      }, 400);
+    }, 100);
   });
 })();
 
@@ -122,7 +145,8 @@ function runTerminalIntro(onComplete) {
 function typeHeroName(onComplete) {
   const nameEl   = document.getElementById('heroTypedName');
   const heroName = document.getElementById('heroName');
-  const fullName = 'Nobiul';
+  const fihadEl  = document.getElementById('heroFihad');
+  const fullName = 'Nobiul Islam';
 
   // Show the h1
   heroName.classList.remove('hero-hidden');
@@ -148,6 +172,9 @@ function typeHeroName(onComplete) {
       // Keep cursor blinking briefly, then remove
       setTimeout(() => {
         cursor.remove();
+        // Reveal Fihad on next line
+        fihadEl.classList.remove('hero-hidden');
+        fihadEl.classList.add('hero-visible');
         onComplete();
       }, 500);
     }
@@ -159,11 +186,19 @@ function typeHeroName(onComplete) {
    4. HERO CONTENT SEQUENCE (runs after terminal)
    ============================================================ */
 function launchHero() {
+  const heroSection = document.getElementById('hero');
   const eyebrow = document.getElementById('heroEyebrow');
   const title   = document.getElementById('heroTitle');
   const tagline = document.getElementById('heroTagline');
   const cta     = document.getElementById('heroCta');
   const scroll  = document.getElementById('heroScroll');
+
+  // Fade in the entire hero section subtly
+  heroSection.style.opacity = '0';
+  heroSection.style.transition = 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+  requestAnimationFrame(() => {
+    heroSection.style.opacity = '1';
+  });
 
   // Step 1: show eyebrow
   function showEl(el, delay) {
@@ -244,7 +279,25 @@ function startSubtitleTyping() {
 
 
 /* ============================================================
-   6. BIDIRECTIONAL SCROLL REVEAL
+   6. SCROLL PROGRESS BAR
+   Tracks scroll position and shows progress at top
+   ============================================================ */
+(function initScrollProgressBar() {
+  const progressBar = document.getElementById('scrollProgressBar');
+  if (!progressBar) return;
+
+  function updateProgress() {
+    const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const scrolled = (window.scrollY / scrollHeight) * 100;
+    progressBar.style.width = scrolled + '%';
+  }
+
+  window.addEventListener('scroll', updateProgress, { passive: true });
+})();
+
+
+/* ============================================================
+   7. BIDIRECTIONAL SCROLL REVEAL
    Elements animate IN when entering viewport from below,
    and animate OUT (up) when they leave upward.
    ============================================================ */
@@ -279,8 +332,8 @@ function startSubtitleTyping() {
       }
     });
   }, {
-    threshold: 0.12,
-    rootMargin: '0px 0px -32px 0px',
+    threshold: [0.1, 0.25],
+    rootMargin: '0px 0px -48px 0px',
   });
 
   els.forEach(el => observer.observe(el));
@@ -288,7 +341,7 @@ function startSubtitleTyping() {
 
 
 /* ============================================================
-   7. NAV SCROLL BEHAVIOR + ACTIVE LINK
+   8. NAV SCROLL BEHAVIOR + ACTIVE LINK
    ============================================================ */
 (function initNav() {
   const nav     = document.getElementById('nav');
@@ -319,7 +372,7 @@ function startSubtitleTyping() {
 
 
 /* ============================================================
-   8. MOBILE MENU
+   9. MOBILE MENU
    ============================================================ */
 (function initMobileMenu() {
   const hamburger = document.getElementById('hamburger');
@@ -349,7 +402,7 @@ function startSubtitleTyping() {
 
 
 /* ============================================================
-   9. SMOOTH ANCHOR SCROLL
+   10. SMOOTH ANCHOR SCROLL
    ============================================================ */
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener('click', function (e) {
