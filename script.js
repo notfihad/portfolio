@@ -1,154 +1,346 @@
 /**
  * NOBIUL ISLAM FIHAD — Portfolio Script
- * Features: Dark mode toggle · Scroll reveal · Typing effect · Nav behavior · Mobile menu
+ *
+ * Features:
+ *   1. Dark mode toggle (persists via localStorage)
+ *   2. Terminal intro sequence on first load
+ *   3. Hero name typing effect (after terminal closes)
+ *   4. Rotating subtitle typing effect
+ *   5. Bidirectional scroll reveal (fade in on scroll down, fade out on scroll up)
+ *   6. Nav scroll behavior + active link highlight
+ *   7. Mobile hamburger menu
  */
 
-/* ─── DARK MODE TOGGLE ─────────────────────── */
-(function () {
-  const html = document.documentElement;
+'use strict';
+
+/* ============================================================
+   1. DARK MODE
+   ============================================================ */
+(function initTheme() {
+  const html   = document.documentElement;
   const toggle = document.getElementById('themeToggle');
 
-  // Load saved preference or system default
-  const saved = localStorage.getItem('theme');
+  const saved      = localStorage.getItem('nif-theme');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const initial = saved || (prefersDark ? 'dark' : 'light');
-  html.setAttribute('data-theme', initial);
+  html.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
 
   toggle.addEventListener('click', () => {
-    const current = html.getAttribute('data-theme');
-    const next = current === 'dark' ? 'light' : 'dark';
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     html.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
+    localStorage.setItem('nif-theme', next);
   });
 })();
 
 
-/* ─── TYPING EFFECT ────────────────────────── */
-(function () {
+/* ============================================================
+   2. TERMINAL INTRO
+   ============================================================ */
+function runTerminalIntro(onComplete) {
+  const overlay = document.getElementById('terminalIntro');
+  const line1   = document.getElementById('termLine1');
+  const line2   = document.getElementById('termLine2');
+  const output  = document.getElementById('termOutput');
+  const line3   = document.getElementById('termLine3');
+
+  // Helper: type text into an element, return Promise
+  function typeInto(el, text, speed) {
+    return new Promise(resolve => {
+      let i = 0;
+      el.style.display = '';
+      el.textContent = '';
+
+      // Add blinking cursor span
+      const cursor = document.createElement('span');
+      cursor.className = 'terminal-intro__cursor';
+      el.appendChild(cursor);
+
+      const interval = setInterval(() => {
+        cursor.before(text[i]);
+        i++;
+        if (i >= text.length) {
+          clearInterval(interval);
+          // Remove cursor after typing finishes
+          setTimeout(() => {
+            cursor.remove();
+            resolve();
+          }, 220);
+        }
+      }, speed);
+    });
+  }
+
+  // Helper: show element with fade
+  function show(el, delay = 0) {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        el.style.display = '';
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.4s ease';
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            el.style.opacity = '1';
+            resolve();
+          });
+        });
+      }, delay);
+    });
+  }
+
+  // Sequence
+  async function run() {
+    // Prompt 1: cat command
+    await typeInto(line1, '$ cat nobiul_islam_fihad.profile', 55);
+    await new Promise(r => setTimeout(r, 180));
+
+    // Prompt 2: executing
+    await typeInto(line2, '> loading profile...', 45);
+    await new Promise(r => setTimeout(r, 260));
+
+    // Show the profile output block
+    await show(output, 0);
+    await new Promise(r => setTimeout(r, 600));
+
+    // Prompt 3: done message
+    await typeInto(line3, '> done. launching portfolio ✓', 42);
+    await new Promise(r => setTimeout(r, 700));
+
+    // Fade out the overlay
+    overlay.classList.add('fade-out');
+    await new Promise(r => setTimeout(r, 750));
+    overlay.style.display = 'none';
+
+    onComplete();
+  }
+
+  run();
+}
+
+
+/* ============================================================
+   3. HERO NAME TYPING
+   ============================================================ */
+function typeHeroName(onComplete) {
+  const nameEl   = document.getElementById('heroTypedName');
+  const heroName = document.getElementById('heroName');
+  const fullName = 'Nobiul';
+
+  // Show the h1
+  heroName.classList.remove('hero-hidden');
+  heroName.style.opacity = '0';
+  heroName.style.transform = 'translateY(12px)';
+  requestAnimationFrame(() => {
+    heroName.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    heroName.style.opacity    = '1';
+    heroName.style.transform  = 'translateY(0)';
+  });
+
+  // Create an inline cursor for the name
+  const cursor = document.createElement('span');
+  cursor.className = 'hero__name-cursor';
+  nameEl.after(cursor);
+
+  let i = 0;
+  const interval = setInterval(() => {
+    nameEl.textContent += fullName[i];
+    i++;
+    if (i >= fullName.length) {
+      clearInterval(interval);
+      // Keep cursor blinking briefly, then remove
+      setTimeout(() => {
+        cursor.remove();
+        onComplete();
+      }, 500);
+    }
+  }, 80);
+}
+
+
+/* ============================================================
+   4. HERO CONTENT SEQUENCE (runs after terminal)
+   ============================================================ */
+function launchHero() {
+  const eyebrow = document.getElementById('heroEyebrow');
+  const title   = document.getElementById('heroTitle');
+  const tagline = document.getElementById('heroTagline');
+  const cta     = document.getElementById('heroCta');
+  const scroll  = document.getElementById('heroScroll');
+
+  // Step 1: show eyebrow
+  function showEl(el, delay) {
+    setTimeout(() => {
+      el.classList.remove('hero-hidden');
+      el.classList.add('hero-visible');
+    }, delay);
+  }
+
+  showEl(eyebrow, 80);
+
+  // Step 2: type the name
+  setTimeout(() => {
+    typeHeroName(() => {
+      // Step 3: reveal rest of hero staggered
+      showEl(title,   120);
+      showEl(tagline, 280);
+      showEl(cta,     440);
+      showEl(scroll,  620);
+
+      // Step 4: start subtitle typing loop
+      setTimeout(startSubtitleTyping, 600);
+    });
+  }, 200);
+}
+
+
+/* ============================================================
+   5. SUBTITLE TYPING LOOP
+   ============================================================ */
+function startSubtitleTyping() {
   const el = document.getElementById('typingText');
   if (!el) return;
 
-  // Tech stack phrases to cycle through
   const phrases = [
     'Backend Engineer',
     'Java & Spring Boot',
     'Fintech Systems',
     'Microservices',
-    'AI & NLP Explorer',
+    'AI & NLP Builder',
     'API Architect',
   ];
 
   let phraseIndex = 0;
-  let charIndex = 0;
-  let isDeleting = false;
-  const TYPING_SPEED = 90;
-  const DELETING_SPEED = 50;
-  const PAUSE_AFTER_TYPE = 1800;
-  const PAUSE_AFTER_DELETE = 300;
+  let charIndex   = 0;
+  let isDeleting  = false;
+
+  const TYPE_SPEED   = 85;
+  const DELETE_SPEED = 48;
+  const PAUSE_TYPED  = 1800;
+  const PAUSE_DELETED= 320;
 
   function tick() {
-    const currentPhrase = phrases[phraseIndex];
+    const phrase = phrases[phraseIndex];
 
     if (!isDeleting) {
-      // Typing forward
       charIndex++;
-      el.textContent = currentPhrase.slice(0, charIndex);
-
-      if (charIndex === currentPhrase.length) {
-        // Pause then start deleting
+      el.textContent = phrase.slice(0, charIndex);
+      if (charIndex === phrase.length) {
         isDeleting = true;
-        setTimeout(tick, PAUSE_AFTER_TYPE);
-        return;
+        return setTimeout(tick, PAUSE_TYPED);
       }
-      setTimeout(tick, TYPING_SPEED);
-    } else {
-      // Deleting
-      charIndex--;
-      el.textContent = currentPhrase.slice(0, charIndex);
-
-      if (charIndex === 0) {
-        isDeleting = false;
-        phraseIndex = (phraseIndex + 1) % phrases.length;
-        setTimeout(tick, PAUSE_AFTER_DELETE);
-        return;
-      }
-      setTimeout(tick, DELETING_SPEED);
+      return setTimeout(tick, TYPE_SPEED);
     }
+
+    charIndex--;
+    el.textContent = phrase.slice(0, charIndex);
+    if (charIndex === 0) {
+      isDeleting   = false;
+      phraseIndex  = (phraseIndex + 1) % phrases.length;
+      return setTimeout(tick, PAUSE_DELETED);
+    }
+    setTimeout(tick, DELETE_SPEED);
   }
 
-  // Delay start until hero loads
-  setTimeout(tick, 1200);
-})();
+  tick();
+}
 
 
-/* ─── SCROLL REVEAL ────────────────────────── */
-(function () {
-  const revealEls = document.querySelectorAll('.reveal');
-  if (!revealEls.length) return;
+/* ============================================================
+   6. BIDIRECTIONAL SCROLL REVEAL
+   Elements animate IN when entering viewport from below,
+   and animate OUT (up) when they leave upward.
+   ============================================================ */
+(function initScrollReveal() {
+  const els = document.querySelectorAll('.reveal');
+  if (!els.length) return;
 
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target); // Only animate once
+  // Track previous scroll position to detect direction
+  let lastY = window.scrollY;
+
+  const observer = new IntersectionObserver((entries) => {
+    const currentY = window.scrollY;
+    const scrollingDown = currentY >= lastY;
+    lastY = currentY;
+
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        // Entering viewport — always animate IN
+        entry.target.classList.remove('hidden-above');
+        entry.target.classList.add('visible');
+      } else {
+        // Leaving viewport
+        const rect = entry.boundingClientRect;
+        if (rect.bottom < 0) {
+          // Element has scrolled OUT above the top → apply inverse (upward exit)
+          entry.target.classList.remove('visible');
+          entry.target.classList.add('hidden-above');
+        } else {
+          // Element is below the fold → reset to default downward state
+          entry.target.classList.remove('visible', 'hidden-above');
         }
-      });
-    },
-    {
-      threshold: 0.12,
-      rootMargin: '0px 0px -40px 0px',
-    }
-  );
+      }
+    });
+  }, {
+    threshold: 0.12,
+    rootMargin: '0px 0px -32px 0px',
+  });
 
-  revealEls.forEach((el) => observer.observe(el));
+  els.forEach(el => observer.observe(el));
 })();
 
 
-/* ─── NAVIGATION SCROLL BEHAVIOR ──────────── */
-(function () {
-  const nav = document.getElementById('nav');
-  if (!nav) return;
+/* ============================================================
+   7. NAV SCROLL BEHAVIOR + ACTIVE LINK
+   ============================================================ */
+(function initNav() {
+  const nav     = document.getElementById('nav');
+  const links   = document.querySelectorAll('.nav__link');
+  const sections= document.querySelectorAll('section[id]');
 
-  const SCROLL_THRESHOLD = 40;
-
+  // Scrolled class for shadow/border
   function onScroll() {
-    if (window.scrollY > SCROLL_THRESHOLD) {
-      nav.classList.add('scrolled');
-    } else {
-      nav.classList.remove('scrolled');
-    }
+    nav.classList.toggle('scrolled', window.scrollY > 36);
   }
-
   window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll(); // Run on load
+  onScroll();
+
+  // Active link via IntersectionObserver
+  const linkObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        links.forEach(link => {
+          link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+        });
+      }
+    });
+  }, { threshold: 0.4 });
+
+  sections.forEach(s => linkObserver.observe(s));
 })();
 
 
-/* ─── MOBILE MENU ──────────────────────────── */
-(function () {
+/* ============================================================
+   8. MOBILE MENU
+   ============================================================ */
+(function initMobileMenu() {
   const hamburger = document.getElementById('hamburger');
-  const navLinks = document.getElementById('navLinks');
+  const navLinks  = document.getElementById('navLinks');
   if (!hamburger || !navLinks) return;
 
   hamburger.addEventListener('click', () => {
-    const isOpen = navLinks.classList.toggle('open');
-    hamburger.classList.toggle('active', isOpen);
-    hamburger.setAttribute('aria-expanded', isOpen);
+    const open = navLinks.classList.toggle('open');
+    hamburger.classList.toggle('active', open);
+    hamburger.setAttribute('aria-expanded', open);
   });
 
-  // Close menu on link click
-  navLinks.querySelectorAll('.nav__link').forEach((link) => {
+  navLinks.querySelectorAll('.nav__link').forEach(link => {
     link.addEventListener('click', () => {
       navLinks.classList.remove('open');
       hamburger.classList.remove('active');
-      hamburger.setAttribute('aria-expanded', 'false');
     });
   });
 
-  // Close on outside click
-  document.addEventListener('click', (e) => {
-    if (!nav.contains(e.target)) {
+  document.addEventListener('click', e => {
+    if (!document.getElementById('nav').contains(e.target)) {
       navLinks.classList.remove('open');
       hamburger.classList.remove('active');
     }
@@ -156,43 +348,31 @@
 })();
 
 
-/* ─── ACTIVE NAV LINK HIGHLIGHT ────────────── */
-(function () {
-  const sections = document.querySelectorAll('section[id]');
-  const navLinks = document.querySelectorAll('.nav__link');
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const id = entry.target.getAttribute('id');
-          navLinks.forEach((link) => {
-            const href = link.getAttribute('href');
-            link.style.color = href === `#${id}` ? 'var(--accent)' : '';
-          });
-        }
-      });
-    },
-    { threshold: 0.35 }
-  );
-
-  sections.forEach((section) => observer.observe(section));
-})();
-
-
-/* ─── SMOOTH SCROLL POLYFILL (fallback) ────── */
-(function () {
-  // Modern browsers handle this via CSS scroll-behavior: smooth
-  // This is a lightweight fallback for anchor links
-  document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-    anchor.addEventListener('click', function (e) {
-      const targetId = this.getAttribute('href');
-      if (targetId === '#') return;
-      const target = document.querySelector(targetId);
-      if (target) {
-        e.preventDefault();
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    });
+/* ============================================================
+   9. SMOOTH ANCHOR SCROLL
+   ============================================================ */
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function (e) {
+    const id     = this.getAttribute('href');
+    if (id === '#') return;
+    const target = document.querySelector(id);
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   });
-})();
+});
+
+
+/* ============================================================
+   ENTRY POINT — Run terminal, then launch hero
+   ============================================================ */
+window.addEventListener('DOMContentLoaded', () => {
+  // Prevent body scroll during intro
+  document.body.style.overflow = 'hidden';
+
+  runTerminalIntro(() => {
+    document.body.style.overflow = '';
+    launchHero();
+  });
+});
