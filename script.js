@@ -56,86 +56,71 @@
 
 
 /* ============================================================
-   2. TERMINAL INTRO
+   2. TERMINAL INTRO (Raw CLI Output)
    ============================================================ */
 function runTerminalIntro(onComplete) {
   const overlay = document.getElementById('terminalIntro');
-  const line1   = document.getElementById('termLine1');
-  const line2   = document.getElementById('termLine2');
-  const output  = document.getElementById('termOutput');
-  const line3   = document.getElementById('termLine3');
+  const body = document.getElementById('terminalBody');
 
-  // Helper: type text into an element, return Promise
-  function typeInto(el, text, speed) {
-    return new Promise(resolve => {
-      let i = 0;
-      el.style.display = '';
-      el.textContent = '';
+  const paths = [
+    'C:\\Users\\Admin\\portfolio>',
+    'C:\\Users\\Admin\\Documents\\GitHub\\portfolio>',
+    'C:\\portfolio>',
+    'D:\\Dev\\projects\\portfolio>',
+  ];
 
-      // Add blinking cursor span
-      const cursor = document.createElement('span');
-      cursor.className = 'terminal-intro__cursor';
-      el.appendChild(cursor);
+  const outputLines = [
+    paths[Math.floor(Math.random() * paths.length)] + ' npm install',
+    'Initializing system...',
+    'Loading modules...',
+    paths[Math.floor(Math.random() * paths.length)] + ' webpack build',
+    'Compiling portfolio assets...',
+    'Rendering components...',
+    'Setting up event listeners...',
+    paths[Math.floor(Math.random() * paths.length)] + ' babel transform',
+    'Initializing animations...',
+    'Loading theme configuration...',
+    'Optimizing assets...',
+    'Preparing viewport...',
+    paths[Math.floor(Math.random() * paths.length)] + ' npm start',
+    'Starting web server...',
+    'Server ready on localhost:3000',
+    'Mounting React Application...',
+    'Hydrating components...',
+    'Connecting WebSocket...',
+    'Syncing state...',
+    'Rendering UI layer...',
+    paths[Math.floor(Math.random() * paths.length)] + ' portfolio --load',
+    'Portfolio online.',
+    '',
+  ];
 
-      const interval = setInterval(() => {
-        cursor.before(text[i]);
-        i++;
-        if (i >= text.length) {
-          clearInterval(interval);
-          // Remove cursor after typing finishes
-          setTimeout(() => {
-            cursor.remove();
-            resolve();
-          }, 220);
-        }
-      }, speed);
-    });
-  }
+  let lineIndex = 0;
+  const LINE_SPEED = 20; // Much faster
 
-  // Helper: show element with fade
-  function show(el, delay = 0) {
-    return new Promise(resolve => {
+  function outputNextLine() {
+    if (lineIndex < outputLines.length) {
+      const line = outputLines[lineIndex];
+      body.textContent += line + '\n';
+      
+      // Auto-scroll to bottom
+      body.scrollTop = body.scrollHeight;
+      
+      lineIndex++;
+      setTimeout(outputNextLine, LINE_SPEED);
+    } else {
+      // All lines done - quick fade
       setTimeout(() => {
-        el.style.display = '';
-        el.style.opacity = '0';
-        el.style.transition = 'opacity 0.4s ease';
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            el.style.opacity = '1';
-            resolve();
-          });
-        });
-      }, delay);
-    });
+        overlay.classList.add('fade-out');
+        setTimeout(() => {
+          overlay.style.display = 'none';
+          onComplete();
+        }, 300);
+      }, 50);
+    }
   }
 
-  // Sequence
-  async function run() {
-    // Prompt 1: cat command
-    await typeInto(line1, '$ cat nobiul_islam_fihad.profile', 55);
-    await new Promise(r => setTimeout(r, 180));
-
-    // Prompt 2: executing
-    await typeInto(line2, '> loading profile...', 45);
-    await new Promise(r => setTimeout(r, 260));
-
-    // Show the profile output block
-    await show(output, 0);
-    await new Promise(r => setTimeout(r, 600));
-
-    // Prompt 3: done message
-    await typeInto(line3, '> done. launching portfolio ✓', 42);
-    await new Promise(r => setTimeout(r, 700));
-
-    // Fade out the overlay
-    overlay.classList.add('fade-out');
-    await new Promise(r => setTimeout(r, 750));
-    overlay.style.display = 'none';
-
-    onComplete();
-  }
-
-  run();
+  outputNextLine();
 }
 
 
